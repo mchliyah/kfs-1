@@ -1,0 +1,37 @@
+
+Discarded input sections
+
+ .comment       0x0000000000000000       0x2c build/kernel.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 build/kernel.o
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+*default*        0x0000000000000000 0xffffffffffffffff
+
+Linker script and memory map
+
+                0x0000000000010000                . = 0x10000
+
+.text           0x0000000000010000       0x2d
+ *(.text)
+ .text          0x0000000000010000       0x2d build/kernel.o
+                0x0000000000010000                _start
+
+.data           0x000000000001002d        0x0
+ *(.data)
+ .data          0x000000000001002d        0x0 build/kernel.o
+ *(.rodata*)
+
+.bss            0x000000000001002d        0x0
+ *(.bss)
+ .bss           0x000000000001002d        0x0 build/kernel.o
+ *(COMMON)
+
+/DISCARD/
+ *(.comment)
+ *(.note.GNU-stack)
+ *(.eh_frame)
+LOAD build/kernel.o
+OUTPUT(build/kernel.bin binary)

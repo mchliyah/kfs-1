@@ -1,0 +1,91 @@
+     1                                  ; boot.asm
+     2                                  bits 16
+     3                                  org 0x7C00
+     4                                  
+     5                                  start:
+     6 00000000 FA                          cli
+     7 00000001 B80090                      mov ax, 0x9000
+     8 00000004 8ED0                        mov ss, ax
+     9 00000006 BCFFFF                      mov sp, 0xFFFF
+    10 00000009 FB                          sti
+    11                                  
+    12                                      ; Load kernel to 0x10000
+    13 0000000A B80010                      mov ax, 0x1000
+    14 0000000D 8EC0                        mov es, ax
+    15 0000000F BB0000                      mov bx, 0
+    16                                  
+    17 00000012 B402                        mov ah, 2
+    18 00000014 B004                        mov al, 4      ; Read 4 sectors
+    19 00000016 B500                        mov ch, 0
+    20 00000018 B102                        mov cl, 2
+    21 0000001A B600                        mov dh, 0
+    22 0000001C B200                        mov dl, 0
+    23 0000001E CD13                        int 0x13
+    24 00000020 7228                        jc disk_error
+    25                                  
+    26                                      ; Switch to protected mode
+    27 00000022 FA                          cli
+    28 00000023 0F0116[8400]                lgdt [gdt_descriptor]
+    29 00000028 0F20C0                      mov eax, cr0
+    30 0000002B 6683C801                    or eax, 0x1
+    31 0000002F 0F22C0                      mov cr0, eax
+    32 00000032 EA[3700]0800                jmp CODE_SEG:init_pm
+    33                                  
+    34                                  bits 32
+    35                                  init_pm:
+    36 00000037 66B81000                    mov ax, DATA_SEG
+    37 0000003B 8ED8                        mov ds, ax
+    38 0000003D 8ED0                        mov ss, ax
+    39 0000003F 8EC0                        mov es, ax
+    40 00000041 8EE0                        mov fs, ax
+    41 00000043 8EE8                        mov gs, ax
+    42                                  
+    43                                      ; Jump to kernel
+    44 00000045 E9(00000100)                jmp 0x10000
+    45                                  
+    46                                  disk_error:
+    47 0000004A 66BE[6000]                  mov si, error_msg
+    48 0000004E E801000000                  call print_string
+    49 00000053 F4                          hlt
+    50                                  
+    51                                  print_string:
+    52 00000054 AC                          lodsb
+    53 00000055 08C0                        or al, al
+    54 00000057 7406                        jz done
+    55 00000059 B40E                        mov ah, 0x0E
+    56 0000005B CD10                        int 0x10
+    57 0000005D EBF5                        jmp print_string
+    58                                  done:
+    59 0000005F C3                          ret
+    60                                  
+    61 00000060 4469736B206572726F-     error_msg db "Disk error!", 0
+    61 00000069 722100             
+    62                                  
+    63                                  ; GDT
+    64                                  gdt_start:
+    65 0000006C 0000000000000000            dq 0x0
+    66                                  gdt_code:
+    67 00000074 FFFF                        dw 0xFFFF
+    68 00000076 0000                        dw 0x0
+    69 00000078 00                          db 0x0
+    70 00000079 9A                          db 10011010b
+    71 0000007A CF                          db 11001111b
+    72 0000007B 00                          db 0x0
+    73                                  gdt_data:
+    74 0000007C FFFF                        dw 0xFFFF
+    75 0000007E 0000                        dw 0x0
+    76 00000080 00                          db 0x0
+    77 00000081 92                          db 10010010b
+    78 00000082 CF                          db 11001111b
+    79 00000083 00                          db 0x0
+    80                                  gdt_end:
+    81                                  
+    82                                  gdt_descriptor:
+    83 00000084 1700                        dw gdt_end - gdt_start - 1
+    84 00000086 [6C000000]                  dd gdt_start
+    85                                  
+    86                                  CODE_SEG equ gdt_code - gdt_start
+    87                                  DATA_SEG equ gdt_data - gdt_start
+    88                                  
+    89 0000008A 00<rep 174h>            times 510-($-$$) db 0
+    90 000001FE 55AA                    dw 0xAA55
