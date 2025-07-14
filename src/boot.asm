@@ -1,27 +1,39 @@
-; boot.asm
 bits 16
 org 0x7C00
 
+%define ENDL 0x0D, 0x0A
+
 start:
-    cli
-    mov ax, 0x9000
-    mov ss, ax
-    mov sp, 0xFFFF
-    sti
-
-    ; Load kernel to 0x10000
-    mov ax, 0x1000
+    ; Initialize segments and stack
+    xor ax, ax
+    mov ds, ax
     mov es, ax
-    mov bx, 0
+    mov ss, ax
+    mov sp, 0x7C00      ; Stack grows down from bootloader
 
-    mov ah, 2
-    mov al, 4      ; Read 4 sectors
-    mov ch, 0
-    mov cl, 2
-    mov dh, 0
-    mov dl, 0
+    ; Reset disk system
+    mov ah, 0x00
+    mov dl, 0x00        ; Drive 0 (floppy)
     int 0x13
     jc disk_error
+
+    ; Load kernel to 0x1000:0x0000 (physical 0x10000)
+    mov ax, 0x1000
+    mov es, ax
+    xor bx, bx
+
+    mov ah, 0x02        ; Read sectors
+    mov al, 2           ; Read 2 sectors (kernel is small)
+    mov ch, 0           ; Cylinder 0
+    mov cl, 2           ; Sector 2 (1 is boot sector)
+    mov dh, 0           ; Head 0
+    mov dl, 0x00        ; Drive 0 (floppy)
+    int 0x13
+    jc disk_error
+
+    ; Verify we read enough sectors
+    cmp al, 2
+    jne disk_error
 
     ; Switch to protected mode
     cli
@@ -51,32 +63,32 @@ disk_error:
 print_string:
     lodsb
     or al, al
-    jz done
+    jz .done
     mov ah, 0x0E
     int 0x10
     jmp print_string
-done:
+.done:
     ret
 
-error_msg db "Disk error!", 0
+error_msg db "Disk error!", ENDL, 0
 
 ; GDT
 gdt_start:
     dq 0x0
 gdt_code:
-    dw 0xFFFF
-    dw 0x0
-    db 0x0
-    db 10011010b
-    db 11001111b
-    db 0x0
+    dw 0xFFFF       ; Limit low
+    dw 0x0          ; Base low
+    db 0x0          ; Base middle
+    db 10011010b    ; Access
+    db 11001111b    ; Granularity
+    db 0x0          ; Base high
 gdt_data:
-    dw 0xFFFF
-    dw 0x0
-    db 0x0
-    db 10010010b
-    db 11001111b
-    db 0x0
+    dw 0xFFFF       ; Limit low
+    dw 0x0          ; Base low
+    db 0x0          ; Base middle
+    db 10010010b    ; Access
+    db 11001111b    ; Granularity
+    db 0x0          ; Base high
 gdt_end:
 
 gdt_descriptor:

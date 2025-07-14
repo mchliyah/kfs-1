@@ -76,6 +76,9 @@ clean:
 	@echo "=== Cleaning build files ==="
 	rm -rf $(BUILD_DIR) $(RUN_DIR)
 
+# rebuild
+re: clean all
+
 # Print file sizes after build
 print-sizes: $(BOOT_BIN) $(KERNEL_BIN)
 	@echo "Bootloader size: $$(stat -c%s $(BOOT_BIN)) bytes"
