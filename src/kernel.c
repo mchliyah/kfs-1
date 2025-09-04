@@ -24,9 +24,9 @@ void _start(void) {
     }
     
     /* First line */
-    vga_buffer[0] = (VGA_COLOR_DEBUG << 8) | 'H';
-    vga_buffer[1] = (VGA_COLOR_DEBUG << 8) | 'i';
-    vga_buffer[2] = (VGA_COLOR_DEBUG << 8) | '!';
+    // vga_buffer[0] = (VGA_COLOR_DEBUG << 8) | 'H';
+    // vga_buffer[1] = (VGA_COLOR_DEBUG << 8) | 'i';
+    // vga_buffer[2] = (VGA_COLOR_DEBUG << 8) | '!';
 
     /* Second line (80 characters per line in VGA text mode) */
     vga_buffer[80] = (VGA_COLOR_OK << 8) | '4';
@@ -35,9 +35,9 @@ void _start(void) {
 
     // third line saying good by 
 
-    vga_buffer[160] = (VGA_COLOR_INFO << 8) | 'B';
-    vga_buffer[161] = (VGA_COLOR_INFO << 8) | 'y';
-    vga_buffer[162] = (VGA_COLOR_INFO << 8) | 'e';
+    // vga_buffer[160] = (VGA_COLOR_INFO << 8) | 'B';
+    // vga_buffer[161] = (VGA_COLOR_INFO << 8) | 'y';
+    // vga_buffer[162] = (VGA_COLOR_INFO << 8) | 'e';
     /* Infinite loop */
     while(1) {
         __asm__ volatile ("hlt");
