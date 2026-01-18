@@ -1,0 +1,2 @@
+=== Starting QEMU ===
+qemu-system-x86_64 -drive file=run/disk.img,format=raw,if=floppy -d int,cpu_reset -no-reboot -serial stdio

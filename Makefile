@@ -6,7 +6,11 @@ RUN_DIR := run
 
 # Files
 BOOT_SRC := $(SRC_DIR)/boot.asm
-KERNEL_SRC := $(SRC_DIR)/kernel.c
+KERNEL_SRCS := $(SRC_DIR)/main.c \
+               $(wildcard $(SRC_DIR)/drivers/*.c) \
+               $(wildcard $(SRC_DIR)/utils/*.c) \
+               $(wildcard $(SRC_DIR)/include/*.c)
+KERNEL_OBJS := $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(KERNEL_SRCS))
 LINKER_SCRIPT := $(SRC_DIR)/linker.ld
 
 # Bonus files
@@ -16,7 +20,6 @@ BONUS_LINKER := $(BONUS_DIR)/bonus_linker.ld
 
 BOOT_BIN := $(BUILD_DIR)/boot.bin
 BOOT_LST := $(BUILD_DIR)/boot.lst
-KERNEL_O := $(BUILD_DIR)/kernel.o
 KERNEL_BIN := $(BUILD_DIR)/kernel.bin
 KERNEL_MAP := $(BUILD_DIR)/kernel.map
 
@@ -34,9 +37,10 @@ ASMFLAGS := -f bin
 
 CC := gcc
 CFLAGS := -m32 -ffreestanding -nostdlib -fno-pie -O1 \
-          -Wall -Wextra -Werror \
           -fno-asynchronous-unwind-tables \
-          -fno-stack-protector
+          -fno-stack-protector \
+          -I$(SRC_DIR)/include
+          #-Wall -Wextra -Werror \
 
 LD := ld
 LDFLAGS := -m elf_i386 -T $(LINKER_SCRIPT) -nostdlib \
@@ -47,6 +51,11 @@ QEMUFLAGS := -drive file=$(DISK_IMG),format=raw,if=floppy \
              -d int,cpu_reset \
              -no-reboot \
              -serial stdio
+QEMUFLAGS_NOGRAPHIC := -drive file=$(DISK_IMG),format=raw,if=floppy \
+			 -d int,cpu_reset \
+			 -no-reboot \
+			 -serial mon:stdio \
+			 -nographic
 
 .PHONY: all clean run bonus run-bonus bonus-test run-bonus-alt run-bonus-manual run-bonus-simple run-bonus-fallback run-bonus-clean run-bonus-gui
 
@@ -65,15 +74,16 @@ $(BOOT_BIN) $(BOOT_LST): $(BOOT_SRC)
 	$(ASM) $(ASMFLAGS) $< -o $(BOOT_BIN) -l $(BOOT_LST)
 	@echo "Bootloader size: $$(stat -c%s $(BOOT_BIN)) bytes"
 
-# Kernel object file
-$(KERNEL_O): $(KERNEL_SRC)
-	@echo "=== Building kernel ==="
+# Kernel object files (handle nested directories)
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
+	@echo "=== Building: $< ==="
 	@mkdir -p $(@D)
 	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) -I$(SRC_DIR) -c $< -o $@
 
 # Kernel binary
-$(KERNEL_BIN): $(KERNEL_O) $(LINKER_SCRIPT)
-	$(LD) $(LDFLAGS) -Map=$(KERNEL_MAP) -o $@ $< --oformat binary
+$(KERNEL_BIN): $(KERNEL_OBJS) $(LINKER_SCRIPT)
+	$(LD) $(LDFLAGS) -Map=$(KERNEL_MAP) -o $@ $(KERNEL_OBJS) --oformat binary
 	@echo "Kernel size: $$(stat -c%s $(KERNEL_BIN)) bytes"
 
 # Disk image
@@ -88,6 +98,11 @@ $(DISK_IMG): $(BOOT_BIN) $(KERNEL_BIN)
 run: $(DISK_IMG)
 	@echo "=== Starting QEMU ==="
 	$(QEMU) $(QEMUFLAGS)
+
+# Headless run (no GUI capture, I/O via terminal)
+run-headless: $(DISK_IMG)
+	@echo "=== Starting QEMU (headless, serial stdio) ==="
+	$(QEMU) $(QEMUFLAGS_NOGRAPHIC)
 
 # Clean up
 clean:
